@@ -1,0 +1,9 @@
+from scrapers.facebook import FacebookMarketplaceScraper
+
+URL = "https://www.facebook.com/marketplace/item/..."
+
+scraper = FacebookMarketplaceScraper(URL)
+data = scraper.scrape()
+scraper.close()
+
+print(data)
