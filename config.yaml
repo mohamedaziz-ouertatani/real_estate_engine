@@ -1,0 +1,12 @@
+paths:
+  dataset: data/checkpoint_page_730.csv
+  models_dir: models/
+
+model:
+  bedroom_cap: 10
+  rental_price_threshold: 20000
+  min_samples_per_category: 10
+
+defaults:
+  missing_value: "Missing"
+  currency: "TND"
