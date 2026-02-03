@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from scrapers.base import BaseScraper
 from utils.text import extract_bedrooms
 from utils.nlp import extract_entities_from_text
+from utils.amenities import detect_amenities
 
 class TayaraScraper(BaseScraper):
     def fetch(self):
@@ -90,11 +91,8 @@ class TayaraScraper(BaseScraper):
         if "terrain" in desc_blob and "villa" not in desc_blob:
             prop_type = "Land"
 
-        # Amenity detection (Fixing the ❌ icons)
-        has_garage = any(x in desc_blob for x in ["garage", "parking", "stationnement"])
-        has_garden = any(x in desc_blob for x in ["jardin", "espace vert"])
-        has_ac = any(x in desc_blob for x in ["clim", "climatisation"])
-        has_heat = any(x in desc_blob for x in ["chauffage"])
+        # Use centralized amenity detection
+        amenities = detect_amenities(desc_blob)
 
         return {
             "surface_area": data.get("surface_area") or nlp.get("surface_area") or 0,
@@ -105,11 +103,5 @@ class TayaraScraper(BaseScraper):
             "property_type": prop_type,
             "transaction_category": "RENT" if price < 20000 else "SALE",
             "description": data["description"],
-            # Explicit amenity mapping
-            "has_air_conditioning": has_ac,
-            "has_heating": has_heat,
-            "has_elevator": "ascenseur" in desc_blob,
-            "has_pool": "piscine" in desc_blob,
-            "has_garage": has_garage,
-            "has_garden": has_garden
+            **amenities  # Merge amenities dict
         }

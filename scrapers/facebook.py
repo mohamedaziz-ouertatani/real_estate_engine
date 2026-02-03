@@ -4,6 +4,7 @@ from playwright.sync_api import sync_playwright
 from scrapers.base import BaseScraper
 from utils.text import extract_bedrooms
 from utils.nlp import extract_entities_from_text
+from utils.amenities import detect_amenities
 
 class FacebookMarketplaceScraper(BaseScraper):
     def fetch(self):
@@ -19,28 +20,25 @@ class FacebookMarketplaceScraper(BaseScraper):
                 page.goto(self.url, wait_until="networkidle", timeout=60000)
                 page.wait_for_selector("div[role='main']", timeout=20000)
 
-                # --- LOGIQUE D'EXPANSION ---
-                expand_selectors = [
-                    "div[role='button'] >> text=/Voir plus|See more|عرض المزيد/",
-                    "span:has-text('Voir plus')",
-                    "span:has-text('See more')"
-                ]
-
-                for selector in expand_selectors:
-                    try:
-                        buttons = page.locator(selector)
-                        for i in range(buttons.count()):
-                            btn = buttons.nth(i)
-                            if btn.is_visible():
-                                btn.scroll_into_view_if_needed()
-                                btn.click(force=True)
-                                time.sleep(1)
-                    except Exception:
-                        continue
+                # --- OPTIMIZED EXPANSION LOGIC ---
+                # Combined selector with OR logic for better performance
+                expand_selector = "div[role='button'] >> text=/Voir plus|See more|عرض المزيد/"
+                
+                try:
+                    buttons = page.locator(expand_selector)
+                    for i in range(buttons.count()):
+                        btn = buttons.nth(i)
+                        if btn.is_visible():
+                            btn.scroll_into_view_if_needed()
+                            btn.click(force=True)
+                            time.sleep(0.5)  # Reduced sleep time
+                except Exception:
+                    pass
 
                 raw_text = page.locator("div[role='main']").inner_text()
                 
-                # --- LOGIQUE DE NETTOYAGE (STOPPERS) ---
+                # --- OPTIMIZED CLEANING LOGIC (STOPPERS) ---
+                # Use single regex split instead of multiple loops
                 stoppers = [
                     "Sélection du jour", 
                     "Suggested for you",
@@ -50,11 +48,8 @@ class FacebookMarketplaceScraper(BaseScraper):
                     "Envoyer un message"
                 ]
                 
-                clean_text = raw_text
-                for stop in stoppers:
-                    if stop in clean_text:
-                        clean_text = clean_text.split(stop)[0]
-                
+                stoppers_pattern = re.compile('|'.join(re.escape(s) for s in stoppers))
+                clean_text = stoppers_pattern.split(raw_text)[0]
                 clean_text = re.sub(r"Voir plus\s*$", "", clean_text, flags=re.IGNORECASE).strip()
                 self.text = clean_text
                 
@@ -117,6 +112,9 @@ class FacebookMarketplaceScraper(BaseScraper):
             else:
                 locality = "El Menzah"
 
+        # Use centralized amenity detection
+        amenities = detect_amenities(text)
+
         return {
             "surface_area": surface or 90,
             "bedrooms_filled": bedrooms,
@@ -126,10 +124,5 @@ class FacebookMarketplaceScraper(BaseScraper):
             "locality": locality,
             "property_type": "Residential",
             "transaction_category": "RENT" if self.raw.get("price", 0) < 20000 else "SALE",
-            "has_air_conditioning": any(x in text_lower for x in ["clim", "climatisation", "split"]),
-            "has_heating": any(x in text_lower for x in ["chauffage", "central", "chaudière"]),
-            "has_elevator": any(x in text_lower for x in ["ascenseur", "monte-charge"]),
-            "has_pool": any(x in text_lower for x in ["piscine", "pool", "مسبح"]),
-            "has_garage": any(x in text_lower for x in ["garage", "parking", "abri"]),
-            "has_garden": any(x in text_lower for x in ["jardin", "garden", "espace vert"])
+            **amenities  # Merge amenities dict
         }
