@@ -27,6 +27,24 @@ ARABIC_NUMBER_WORDS = {
     "بيوت": None,     # Plural - handled by digit regex
 }
 
+# Optimization: Pre-compile regex patterns at module level
+# Note: These patterns depend on ARABIC_NUMBER_WORDS defined above
+_S_PLUS_PATTERN = re.compile(r"\bs\s*[\+\-]?\s*(\d+)", re.IGNORECASE)
+_KEYWORD_PATTERN = re.compile(
+    r"(\d+)\s*(?:pièce|piece|pièces|pieces|chambre|chambres|room|rooms|bureau|bureaux|بيت|بيوت|غرفة|غرف)",
+    re.IGNORECASE
+)
+_F_PATTERN = re.compile(r"\bf\s*(\d+)\b", re.IGNORECASE)
+_FALLBACK_PATTERN = re.compile(r"(\d+)\s*(?:bed|beds|ch|b|br)\b", re.IGNORECASE)
+
+# Pre-compile Arabic word patterns for faster matching
+# Only compile patterns for words with actual values (not None)
+_ARABIC_PATTERNS = {
+    word: re.compile(rf"(?:^|\s){word}(?:\s|$)")
+    for word, value in ARABIC_NUMBER_WORDS.items()
+    if value is not None
+}
+
 def extract_bedrooms(description: str) -> Optional[int]:
     """
     Comprehensive bedroom extraction for Tunisian real estate.
@@ -57,7 +75,7 @@ def extract_bedrooms(description: str) -> Optional[int]:
     # 2. S+X format (Standard Tunisia)
     # Optimized to catch "S+1", "S 1", "S+ 1", "s+2"
     # ----------------------
-    s_plus_match = re.search(r"\bs\s*[\+\-]?\s*(\d+)", txt)
+    s_plus_match = _S_PLUS_PATTERN.search(txt)
     if s_plus_match:
         return min(int(s_plus_match.group(1)), MAX_BEDROOMS)
 
@@ -65,10 +83,7 @@ def extract_bedrooms(description: str) -> Optional[int]:
     # 3. Multi-language Digit + Keywords
     # Handles: 4 pièces, 3 chambres, 5 bureaux, 2 rooms, 3 غرف
     # ----------------------
-    keyword_match = re.search(
-        r"(\d+)\s*(?:pièce|piece|pièces|pieces|chambre|chambres|room|rooms|bureau|bureaux|بيت|بيوت|غرفة|غرف)",
-        txt
-    )
+    keyword_match = _KEYWORD_PATTERN.search(txt)
     if keyword_match:
         count = int(keyword_match.group(1))
         
@@ -86,7 +101,7 @@ def extract_bedrooms(description: str) -> Optional[int]:
     # ----------------------
     # 4. F-Type (French System: F3 = 2 Bedrooms)
     # ----------------------
-    f_match = re.search(r"\bf\s*(\d+)\b", txt)
+    f_match = _F_PATTERN.search(txt)
     if f_match:
         return min(max(int(f_match.group(1)) - 1, 0), MAX_BEDROOMS)
 
@@ -94,15 +109,13 @@ def extract_bedrooms(description: str) -> Optional[int]:
     # 5. Arabic Number Words (Word-based duals and counts)
     # ----------------------
     for word, value in ARABIC_NUMBER_WORDS.items():
-        if value is not None:
-            # Using custom boundaries for Arabic characters
-            if re.search(rf"(?:^|\s){word}(?:\s|$)", txt):
-                return min(value, MAX_BEDROOMS)
+        if value is not None and _ARABIC_PATTERNS[word].search(txt):
+            return min(value, MAX_BEDROOMS)
 
     # ----------------------
     # 6. Fallback (3 bed, 2 ch, 3 br)
     # ----------------------
-    fallback_match = re.search(r"(\d+)\s*(?:bed|beds|ch|b|br)\b", txt)
+    fallback_match = _FALLBACK_PATTERN.search(txt)
     if fallback_match:
         return min(int(fallback_match.group(1)), MAX_BEDROOMS)
 

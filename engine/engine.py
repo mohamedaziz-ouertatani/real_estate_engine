@@ -8,6 +8,9 @@ from engine.category import detect_category
 
 
 class UnifiedPredictionEngine:
+    # Class-level model cache for performance (load once per process)
+    _model_cache = {}
+    
     def __init__(self):
         self.models = {}
         self.pipeline = None
@@ -19,11 +22,15 @@ class UnifiedPredictionEngine:
             "Rental": "models/rental_model.pkl"
         }
 
-        for category, path in model_paths.items():
-            try:
-                self.models[category] = joblib.load(path)
-            except Exception as e:
-                print(f"❌ Failed to load {category} model: {e}")
+        # Use class-level cache to avoid repeated disk I/O
+        if not self._model_cache:
+            for category, path in model_paths.items():
+                try:
+                    self._model_cache[category] = joblib.load(path)
+                except Exception as e:
+                    print(f"❌ Failed to load {category} model: {e}")
+        
+        self.models = self._model_cache
 
     # ------------------------------------------------------------------
     # 🔧 Heuristic Adjustment Layer (Post-ML)
@@ -49,6 +56,7 @@ class UnifiedPredictionEngine:
         }
 
         multiplier = 1.0
+        # Optimized: Check all matching zones but use maximum value
         for zone, value in zone_multipliers.items():
             if zone in geo_text:
                 multiplier = max(multiplier, value)

@@ -5,6 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from scrapers.base import BaseScraper
 from utils.text import extract_bedrooms
 from utils.nlp import extract_entities_from_text
+from utils.amenities import detect_amenities
 
 class TunisieAnnonceScraper(BaseScraper):
 
@@ -81,30 +82,43 @@ class TunisieAnnonceScraper(BaseScraper):
         data = self.raw if isinstance(self.raw, dict) else {}
         
         desc = data.get("description", "")
-        nlp_data = extract_entities_from_text(desc)
-
-        # Fallback IA si la ville n'est pas trouvée dans le tableau
+        
+        # Optimized: Only call NLP if city/locality/surface are unknown (lazy evaluation)
         city = data.get("city", "Unknown")
-        if city == "Unknown":
-            city = nlp_data.get("city") or "Tunis"
-            
         locality = data.get("locality", "Unknown")
-        if locality == "Unknown":
-            locality = nlp_data.get("locality") or "Unknown"
+        surface_area = data.get("surface_area")
+        bedrooms = extract_bedrooms(desc)  # Always extract bedrooms from description
+        
+        # Only extract NLP data if needed for city, locality, or surface
+        if city == "Unknown" or locality == "Unknown" or not surface_area:
+            nlp_data = extract_entities_from_text(desc)
+            
+            if city == "Unknown":
+                city = nlp_data.get("city") or "Tunis"
+                
+            if locality == "Unknown":
+                locality = nlp_data.get("locality") or "Unknown"
+            
+            if not surface_area:
+                surface_area = nlp_data.get("surface_area") or 0
+            
+            # Fallback to NLP bedrooms only if extraction failed
+            if not bedrooms:
+                bedrooms = nlp_data.get("bedrooms") or 2
+        else:
+            surface_area = surface_area or 0
+            if not bedrooms:
+                bedrooms = 2
+
+        # Use centralized amenity detection
+        amenities = detect_amenities(desc)
 
         return {
-            "surface_area": data.get("surface_area") or nlp_data.get("surface_area") or 0,
-            "bedrooms_filled": extract_bedrooms(desc) or nlp_data.get("bedrooms") or 2,
+            "surface_area": surface_area,
+            "bedrooms_filled": bedrooms,
             "photo_count": data.get("photo_count", 0),
             "price": data.get("price"),
-
-            "has_air_conditioning": "clim" in desc.lower(),
-            "has_heating": "chauffage" in desc.lower(),
-            "has_elevator": "ascenseur" in desc.lower(),
-            "has_pool": "piscine" in desc.lower(),
-            "has_garage": "garage" in desc.lower(),
-            "has_garden": "jardin" in desc.lower(),
-
+            **amenities,  # Merge amenities dict
             "region": city,  # Mapping simple City -> Region
             "city": city,
             "locality": locality,
