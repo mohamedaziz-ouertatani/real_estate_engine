@@ -148,6 +148,7 @@ class UnifiedPredictionEngine:
                     "bedrooms": data.get("bedrooms_filled"),
                     "property_type": data.get("property_type"),
                     "transaction_category": data.get("transaction_category"),
+                    "description": data.get("description", "No description available."), # Added for UI
                     # These trigger the ✅/❌ icons in the UI
                     "has_air_conditioning": data.get("has_air_conditioning", False),
                     "has_heating": data.get("has_heating", False),
