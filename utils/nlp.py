@@ -61,7 +61,8 @@ _GEO_MAP = {
 }
 
 # Optimization: Sort by length (longest first) to match multi-word entries first
-GEO_MAP = sorted(_GEO_MAP.items(), key=lambda x: len(x[0]), reverse=True)
+# Store as list of tuples for efficient iteration
+GEO_MAP_SORTED = sorted(_GEO_MAP.items(), key=lambda x: len(x[0]), reverse=True)
 
 def extract_entities_from_text(text: str) -> Dict[str, Optional[any]]:
     result = {
@@ -83,7 +84,7 @@ def extract_entities_from_text(text: str) -> Dict[str, Optional[any]]:
         result["surface_area"] = int(surf_m.group(1).replace(" ", ""))
 
     # 3. Optimized Geo-Mapping with pre-sorted entries (longest first)
-    for key, (city, loc) in GEO_MAP:
+    for key, (city, loc) in GEO_MAP_SORTED:
         if key in txt_l:
             result["city"] = city
             result["locality"] = loc

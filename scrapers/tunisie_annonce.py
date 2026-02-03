@@ -83,12 +83,13 @@ class TunisieAnnonceScraper(BaseScraper):
         
         desc = data.get("description", "")
         
-        # Optimized: Only call NLP if city/locality are unknown (lazy evaluation)
+        # Optimized: Only call NLP if city/locality/surface are unknown (lazy evaluation)
         city = data.get("city", "Unknown")
         locality = data.get("locality", "Unknown")
         surface_area = data.get("surface_area")
+        bedrooms = extract_bedrooms(desc)  # Always extract bedrooms from description
         
-        # Only extract NLP data if needed
+        # Only extract NLP data if needed for city, locality, or surface
         if city == "Unknown" or locality == "Unknown" or not surface_area:
             nlp_data = extract_entities_from_text(desc)
             
@@ -100,16 +101,21 @@ class TunisieAnnonceScraper(BaseScraper):
             
             if not surface_area:
                 surface_area = nlp_data.get("surface_area") or 0
+            
+            # Fallback to NLP bedrooms only if extraction failed
+            if not bedrooms:
+                bedrooms = nlp_data.get("bedrooms") or 2
         else:
-            nlp_data = {}
             surface_area = surface_area or 0
+            if not bedrooms:
+                bedrooms = 2
 
         # Use centralized amenity detection
         amenities = detect_amenities(desc)
 
         return {
             "surface_area": surface_area,
-            "bedrooms_filled": extract_bedrooms(desc) or nlp_data.get("bedrooms") or 2,
+            "bedrooms_filled": bedrooms,
             "photo_count": data.get("photo_count", 0),
             "price": data.get("price"),
             **amenities,  # Merge amenities dict

@@ -22,6 +22,7 @@ class FacebookMarketplaceScraper(BaseScraper):
 
                 # --- OPTIMIZED EXPANSION LOGIC ---
                 # Combined selector with OR logic for better performance
+                # Reduced sleep to improve speed; click force=True handles most loading cases
                 expand_selector = "div[role='button'] >> text=/Voir plus|See more|عرض المزيد/"
                 
                 try:
@@ -31,7 +32,7 @@ class FacebookMarketplaceScraper(BaseScraper):
                         if btn.is_visible():
                             btn.scroll_into_view_if_needed()
                             btn.click(force=True)
-                            time.sleep(0.5)  # Reduced sleep time
+                            time.sleep(0.7)  # Balanced: faster than 1s, safer than 0.5s
                 except Exception:
                     pass
 

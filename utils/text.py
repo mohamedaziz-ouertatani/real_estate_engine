@@ -28,6 +28,7 @@ ARABIC_NUMBER_WORDS = {
 }
 
 # Optimization: Pre-compile regex patterns at module level
+# Note: These patterns depend on ARABIC_NUMBER_WORDS defined above
 _S_PLUS_PATTERN = re.compile(r"\bs\s*[\+\-]?\s*(\d+)", re.IGNORECASE)
 _KEYWORD_PATTERN = re.compile(
     r"(\d+)\s*(?:pièce|piece|pièces|pieces|chambre|chambres|room|rooms|bureau|bureaux|بيت|بيوت|غرفة|غرف)",
@@ -37,6 +38,7 @@ _F_PATTERN = re.compile(r"\bf\s*(\d+)\b", re.IGNORECASE)
 _FALLBACK_PATTERN = re.compile(r"(\d+)\s*(?:bed|beds|ch|b|br)\b", re.IGNORECASE)
 
 # Pre-compile Arabic word patterns for faster matching
+# Only compile patterns for words with actual values (not None)
 _ARABIC_PATTERNS = {
     word: re.compile(rf"(?:^|\s){word}(?:\s|$)")
     for word, value in ARABIC_NUMBER_WORDS.items()

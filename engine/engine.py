@@ -56,11 +56,10 @@ class UnifiedPredictionEngine:
         }
 
         multiplier = 1.0
-        # Optimized: Early break after finding first match
+        # Optimized: Check all matching zones but use maximum value
         for zone, value in zone_multipliers.items():
             if zone in geo_text:
                 multiplier = max(multiplier, value)
-                break  # Early exit after finding match
 
         # Standing bonuses
         if any(x in description for x in ["piscine", "luxe", "haut standing"]):
