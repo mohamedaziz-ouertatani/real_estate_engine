@@ -3,7 +3,7 @@ Centralized amenity detection to eliminate code duplication across scrapers.
 """
 
 AMENITY_KEYWORDS = {
-    "air_conditioning": ["clim", "climatisation", "split", "climatisé"],
+    "air_conditioning": ["clim", "climatisation", "split", "climatisé", "air conditionné"],
     "heating": ["chauffage", "central", "chaudière"],
     "elevator": ["ascenseur", "monte-charge"],
     "pool": ["piscine", "pool", "مسبح"],
